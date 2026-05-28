@@ -220,6 +220,14 @@
       </div>
     </section>
 
+    <div id="streakPopup" style="display:none; position:fixed; inset:0; z-index:999; pointer-events:none; align-items:center; justify-content:center;">
+      <div id="streakPopupInner" style="background:rgba(17,24,39,0.92); color:white; padding:28px 34px; border-radius:28px; text-align:center; transform:scale(0.8); opacity:0; transition:all 0.35s ease; box-shadow:0 20px 50px rgba(0,0,0,0.35);">
+        <div id="streakEmoji" style="font-size:54px; margin-bottom:10px;">🔥</div>
+        <div id="streakTitle" style="font-size:34px; font-weight:950; margin-bottom:6px;">3連続正解！</div>
+        <div id="streakMessage" style="font-size:17px; color:#e5e7eb;">Indonesia Lover!</div>
+      </div>
+    </div>
+
     <section class="card score">
       <strong>スコア：</strong><span id="scoreText">0問中0問正解</span><br />
       次の拡張候補：音声入力、英語・中国語モード、空港・ホテル・飲食店カテゴリ。
@@ -238,6 +246,7 @@
     let selectedButton = null;
     let answered = false;
     let totalCount = 0;
+    let streakCount = 0;
     let correctCount = 0;
     let audioContext = null;
 
@@ -253,6 +262,11 @@
     const speakButton = document.getElementById("speakButton");
     const nextButton = document.getElementById("nextButton");
     const scoreText = document.getElementById("scoreText");
+    const streakPopup = document.getElementById("streakPopup");
+    const streakPopupInner = document.getElementById("streakPopupInner");
+    const streakEmoji = document.getElementById("streakEmoji");
+    const streakTitle = document.getElementById("streakTitle");
+    const streakMessage = document.getElementById("streakMessage");
 
     function shuffle(array) {
       return [...array].sort(() => Math.random() - 0.5);
@@ -313,11 +327,21 @@
 
       if (isCorrect) {
         correctCount++;
+        streakCount++;
+
+        if (streakCount === 3) {
+          showStreakPopup("🔥", "3連続正解！", "Indonesia Beginner!");
+        }
+
+        if (streakCount === 5) {
+          showStreakPopup("🌏", "5連続正解！", "Indonesia Explorer!");
+        }
         selectedButton.classList.add("correct");
         feedbackEl.className = "feedback correct show";
         feedbackEl.textContent = "正解！いい感じです。";
       } else {
         selectedButton.classList.add("wrong");
+        streakCount = 0;
         feedbackEl.className = "feedback wrong show";
         feedbackEl.textContent = "惜しい。正解はこちらです。";
       }
@@ -363,8 +387,10 @@
       const now = ctx.currentTime;
 
       if (isCorrect) {
-        playTone(660, now, 0.13, 0.12);
-        playTone(880, now + 0.12, 0.16, 0.12);
+        playTone(523.25, now, 0.12, 0.13);
+        playTone(659.25, now + 0.10, 0.14, 0.13);
+        playTone(783.99, now + 0.20, 0.18, 0.14);
+        playTone(1046.5, now + 0.32, 0.28, 0.16);
       } else {
         playTone(220, now, 0.12, 0.055);
         playTone(180, now + 0.11, 0.16, 0.045);
@@ -380,8 +406,30 @@
       window.speechSynthesis.speak(utterance);
     }
 
+    function showStreakPopup(emoji, title, message) {
+      streakEmoji.textContent = emoji;
+      streakTitle.textContent = title;
+      streakMessage.textContent = message;
+
+      streakPopup.style.display = "flex";
+
+      requestAnimationFrame(() => {
+        streakPopupInner.style.transform = "scale(1)";
+        streakPopupInner.style.opacity = "1";
+      });
+
+      setTimeout(() => {
+        streakPopupInner.style.transform = "scale(0.82)";
+        streakPopupInner.style.opacity = "0";
+
+        setTimeout(() => {
+          streakPopup.style.display = "none";
+        }, 320);
+      }, 1800);
+    }
+
     function updateScore() {
-      scoreText.textContent = `${totalCount}問中${correctCount}問正解`;
+      scoreText.textContent = `${totalCount}問中${correctCount}問正解 ｜ 現在 ${streakCount} 連続正解中 🔥`;
     }
 
     submitButton.addEventListener("click", submitAnswer);
