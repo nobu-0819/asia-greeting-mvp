@@ -274,6 +274,7 @@
 
     function createQuestion() {
       answered = false;
+      nextButton.disabled = true;
       selectedItem = null;
       selectedButton = null;
       currentQuestion = quizData[Math.floor(Math.random() * quizData.length)];
@@ -347,6 +348,7 @@
       }
 
       answerButtonWrap.className = "answer-button-wrap";
+      nextButton.disabled = false;
       showAnswer();
       updateScore();
     }
@@ -434,7 +436,10 @@
 
     submitButton.addEventListener("click", submitAnswer);
     speakButton.addEventListener("click", speakAnswer);
-    nextButton.addEventListener("click", createQuestion);
+    nextButton.addEventListener("click", () => {
+      if (!answered) return;
+      createQuestion();
+    });
 
     createQuestion();
   </script>
