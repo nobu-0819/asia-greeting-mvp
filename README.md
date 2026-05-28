@@ -16,14 +16,8 @@
       padding: 18px;
     }
 
-    .app {
-      max-width: 680px;
-      margin: 0 auto;
-    }
-
-    header {
-      margin-bottom: 18px;
-    }
+    .app { max-width: 680px; margin: 0 auto; }
+    header { margin-bottom: 18px; }
 
     h1 {
       margin: 0 0 8px;
@@ -79,10 +73,7 @@
       margin-bottom: 18px;
     }
 
-    .choices {
-      display: grid;
-      gap: 10px;
-    }
+    .choices { display: grid; gap: 10px; }
 
     button {
       appearance: none;
@@ -95,12 +86,18 @@
       color: #111827;
       cursor: pointer;
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, opacity 0.12s ease;
       text-align: left;
     }
 
     button:hover { box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12); }
     button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .choice.selected {
+      background: #dbeafe;
+      border: 2px solid #2563eb;
+    }
 
     .choice.correct {
       background: #dcfce7;
@@ -110,6 +107,21 @@
     .choice.wrong {
       background: #fee2e2;
       border: 2px solid #dc2626;
+    }
+
+    .answer-button-wrap {
+      display: none;
+      margin-top: 14px;
+    }
+
+    .answer-button-wrap.show { display: block; }
+
+    .answer-button {
+      width: 100%;
+      text-align: center;
+      background: #2563eb;
+      color: white;
+      font-size: 18px;
     }
 
     .feedback {
@@ -148,9 +160,7 @@
       color: #444;
     }
 
-    .meaning {
-      color: #555;
-    }
+    .meaning { color: #555; }
 
     .actions {
       display: grid;
@@ -189,8 +199,12 @@
       <div class="badge">🇮🇩 インドネシア語モード</div>
       <div class="question-label">この日本語をインドネシア語で言うと？</div>
       <div id="question" class="question"></div>
-      <div class="prompt">正しい答えを選んでください</div>
+      <div class="prompt">答えを選んでから「回答」を押してください</div>
       <div id="choices" class="choices"></div>
+
+      <div id="answerButtonWrap" class="answer-button-wrap">
+        <button id="submitButton" class="answer-button">回答</button>
+      </div>
 
       <div id="feedback" class="feedback"></div>
 
@@ -214,33 +228,23 @@
 
   <script>
     const quizData = [
-      {
-        japanese: "こんにちは",
-        native: "Halo",
-        pronunciation: "ハロ",
-        meaning: "こんにちは"
-      },
-      {
-        japanese: "ありがとう",
-        native: "Terima kasih",
-        pronunciation: "トゥリマ カシ",
-        meaning: "ありがとうございます"
-      },
-      {
-        japanese: "ごめんね",
-        native: "Maaf, ya",
-        pronunciation: "マアフ ヤ",
-        meaning: "ごめんね / すみません"
-      }
+      { japanese: "こんにちは", native: "Halo", pronunciation: "ハロ", meaning: "こんにちは" },
+      { japanese: "ありがとう", native: "Terima kasih", pronunciation: "トゥリマ カシ", meaning: "ありがとうございます" },
+      { japanese: "ごめんね", native: "Maaf, ya", pronunciation: "マアフ ヤ", meaning: "ごめんね / すみません" }
     ];
 
     let currentQuestion = null;
+    let selectedItem = null;
+    let selectedButton = null;
     let answered = false;
     let totalCount = 0;
     let correctCount = 0;
+    let audioContext = null;
 
     const questionEl = document.getElementById("question");
     const choicesEl = document.getElementById("choices");
+    const answerButtonWrap = document.getElementById("answerButtonWrap");
+    const submitButton = document.getElementById("submitButton");
     const feedbackEl = document.getElementById("feedback");
     const answerBoxEl = document.getElementById("answerBox");
     const nativeEl = document.getElementById("native");
@@ -256,11 +260,14 @@
 
     function createQuestion() {
       answered = false;
+      selectedItem = null;
+      selectedButton = null;
       currentQuestion = quizData[Math.floor(Math.random() * quizData.length)];
       const choices = shuffle(quizData);
 
       questionEl.textContent = currentQuestion.japanese;
       choicesEl.innerHTML = "";
+      answerButtonWrap.className = "answer-button-wrap";
       feedbackEl.className = "feedback";
       feedbackEl.textContent = "";
       answerBoxEl.className = "answer-box";
@@ -269,35 +276,53 @@
         const button = document.createElement("button");
         button.className = "choice";
         button.textContent = item.native;
-        button.addEventListener("click", () => checkAnswer(button, item));
+        button.addEventListener("click", () => selectChoice(button, item));
         choicesEl.appendChild(button);
       });
     }
 
-    function checkAnswer(button, selectedItem) {
+    function selectChoice(button, item) {
       if (answered) return;
+
+      selectedItem = item;
+      selectedButton = button;
+
+      document.querySelectorAll(".choice").forEach((choiceButton) => {
+        choiceButton.classList.remove("selected");
+      });
+
+      button.classList.add("selected");
+      answerButtonWrap.className = "answer-button-wrap show";
+    }
+
+    function submitAnswer() {
+      if (!selectedItem || answered) return;
+
       answered = true;
       totalCount++;
 
       const isCorrect = selectedItem.native === currentQuestion.native;
+      playEffectSound(isCorrect);
+
+      document.querySelectorAll(".choice").forEach((choiceButton) => {
+        choiceButton.disabled = true;
+        if (choiceButton.textContent === currentQuestion.native) {
+          choiceButton.classList.add("correct");
+        }
+      });
 
       if (isCorrect) {
         correctCount++;
-        button.classList.add("correct");
+        selectedButton.classList.add("correct");
         feedbackEl.className = "feedback correct show";
         feedbackEl.textContent = "正解！いい感じです。";
       } else {
-        button.classList.add("wrong");
+        selectedButton.classList.add("wrong");
         feedbackEl.className = "feedback wrong show";
         feedbackEl.textContent = "惜しい。正解はこちらです。";
-
-        document.querySelectorAll(".choice").forEach((choiceButton) => {
-          if (choiceButton.textContent === currentQuestion.native) {
-            choiceButton.classList.add("correct");
-          }
-        });
       }
 
+      answerButtonWrap.className = "answer-button-wrap";
       showAnswer();
       updateScore();
     }
@@ -307,6 +332,43 @@
       pronunciationEl.textContent = currentQuestion.pronunciation;
       meaningEl.textContent = currentQuestion.meaning;
       answerBoxEl.className = "answer-box show";
+    }
+
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioContext;
+    }
+
+    function playTone(frequency, startTime, duration, volume) {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration + 0.02);
+    }
+
+    function playEffectSound(isCorrect) {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+
+      if (isCorrect) {
+        playTone(660, now, 0.13, 0.12);
+        playTone(880, now + 0.12, 0.16, 0.12);
+      } else {
+        playTone(220, now, 0.12, 0.055);
+        playTone(180, now + 0.11, 0.16, 0.045);
+      }
     }
 
     function speakAnswer() {
@@ -322,6 +384,7 @@
       scoreText.textContent = `${totalCount}問中${correctCount}問正解`;
     }
 
+    submitButton.addEventListener("click", submitAnswer);
     speakButton.addEventListener("click", speakAnswer);
     nextButton.addEventListener("click", createQuestion);
 
